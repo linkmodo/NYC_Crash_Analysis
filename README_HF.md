@@ -3,9 +3,7 @@ title: NYC Crash Analysis
 emoji: 🚗
 colorFrom: blue
 colorTo: red
-sdk: streamlit
-sdk_version: "1.53.0"
-app_file: app.py
+sdk: docker
 pinned: false
 license: mit
 ---
