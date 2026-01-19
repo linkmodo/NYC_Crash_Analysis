@@ -429,8 +429,9 @@ def load_data():
     df['TOTAL_INJURED'] = df['NUMBER OF PERSONS INJURED'].fillna(0)
     df['TOTAL_KILLED'] = df['NUMBER OF PERSONS KILLED'].fillna(0)
     
-    # Clean borough data
-    df['BOROUGH'] = df['BOROUGH'].fillna('UNKNOWN')
+    # Clean borough data - rename UNKNOWN to Highways (crashes on highways/bridges without specific borough)
+    df['BOROUGH'] = df['BOROUGH'].fillna('Highways')
+    df['BOROUGH'] = df['BOROUGH'].replace('UNKNOWN', 'Highways')
     
     return df
 
@@ -537,7 +538,7 @@ year_range = st.sidebar.slider(
 )
 
 # Borough filter
-boroughs = ['All'] + sorted([b for b in df['BOROUGH'].unique() if b != 'UNKNOWN'])
+boroughs = ['All'] + sorted([b for b in df['BOROUGH'].unique() if b != 'Highways'])
 selected_borough = st.sidebar.selectbox("Select Borough:", boroughs)
 
 # Filter data based on selections
@@ -563,12 +564,14 @@ if page == "Overview":
     st.markdown('<h1 class="main-header">NYC Motor Vehicle Collisions Dashboard</h1>', unsafe_allow_html=True)
     st.markdown("---")
     
+    # Get available years from filtered data
+    all_years = sorted(filtered_df['YEAR'].unique().tolist())
+    
     # Page-specific filters
     with st.expander("Additional Filters", expanded=False):
         filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
         with filter_col1:
-            # Year filter for cross-filtering (moved from below)
-            all_years = sorted(page_df['YEAR'].unique().tolist())
+            # Year filter for cross-filtering
             selected_years = st.multiselect(
                 "Filter by Year:",
                 all_years,
@@ -669,7 +672,7 @@ if page == "Overview":
     with col2:
         st.subheader("Crashes by Borough")
         borough_filtered = cross_filtered_df.groupby('BOROUGH').size().reset_index(name='Crashes')
-        borough_filtered = borough_filtered[borough_filtered['BOROUGH'] != 'UNKNOWN']
+        borough_filtered = borough_filtered[borough_filtered['BOROUGH'] != 'Highways']
         
         fig = px.pie(borough_filtered, values='Crashes', names='BOROUGH',
                      title='Distribution by Borough', hole=0.4)
@@ -878,7 +881,7 @@ elif page == "Geographic Analysis":
             'STATEN ISLAND': (40.5795, -74.1502)
         }
         
-        borough_stats = filtered_df[filtered_df['BOROUGH'] != 'UNKNOWN'].groupby('BOROUGH').agg({
+        borough_stats = filtered_df[filtered_df['BOROUGH'] != 'Highways'].groupby('BOROUGH').agg({
             'COLLISION_ID': 'count',
             'TOTAL_INJURED': 'sum',
             'TOTAL_KILLED': 'sum'
@@ -1367,7 +1370,7 @@ elif page == "Cause Analysis":
     # Vehicle type by borough
     st.subheader("Vehicle Types by Borough")
     
-    vehicle_borough = filtered_df[filtered_df['BOROUGH'] != 'UNKNOWN'].groupby(
+    vehicle_borough = filtered_df[filtered_df['BOROUGH'] != 'Highways'].groupby(
         ['BOROUGH', 'VEHICLE TYPE CODE 1']
     ).size().reset_index(name='Crashes')
     
@@ -1402,8 +1405,8 @@ elif page == "Severity Analysis":
         with filter_col2:
             sev_borough = st.multiselect(
                 "Boroughs:",
-                [b for b in filtered_df['BOROUGH'].unique() if b != 'UNKNOWN'],
-                default=[b for b in filtered_df['BOROUGH'].unique() if b != 'UNKNOWN'],
+                [b for b in filtered_df['BOROUGH'].unique() if b != 'Highways'],
+                default=[b for b in filtered_df['BOROUGH'].unique() if b != 'Highways'],
                 key="sev_boroughs"
             )
         with filter_col3:
@@ -1486,7 +1489,7 @@ elif page == "Severity Analysis":
     
     with col1:
         st.subheader("Fatalities by Borough")
-        borough_fatal = page_df[page_df['BOROUGH'] != 'UNKNOWN'].groupby('BOROUGH').agg({
+        borough_fatal = page_df[page_df['BOROUGH'] != 'Highways'].groupby('BOROUGH').agg({
             'TOTAL_KILLED': 'sum'
         }).reset_index()
         borough_fatal.columns = ['Borough', 'Fatalities']
@@ -1544,7 +1547,7 @@ elif page == "Severity Analysis":
         'COLLISION_ID': 'count'
     }).reset_index()
     scatter_data.columns = ['Hour', 'Borough', 'Total Injured', 'Total Killed', 'Crash Count']
-    scatter_data = scatter_data[scatter_data['Borough'] != 'UNKNOWN']
+    scatter_data = scatter_data[scatter_data['Borough'] != 'Highways']
     
     # Create scatter plot with trendline
     fig = px.scatter(
