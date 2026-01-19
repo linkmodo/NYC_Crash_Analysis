@@ -1695,40 +1695,58 @@ elif page == "Severity Analysis":
 elif page == "Risk Prediction":
     st.markdown('<h1 class="main-header">Risk Prediction (Monte Carlo Simulation)</h1>', unsafe_allow_html=True)
     
-    show_analysis("This page uses Monte Carlo simulation to predict crash risk for specific locations. The simulation runs thousands of iterations based on historical patterns to estimate future crash probabilities with confidence intervals.", "About Risk Prediction")
+    # Initialize filter variables with defaults
+    risk_borough = 'All'
+    min_crashes = 10
+    selected_street = None
     
-    # Location selection
-    st.subheader("Select Location for Risk Analysis")
+    # Get default street list for initial stats display
+    street_counts_default = filtered_df['ON STREET NAME'].value_counts()
+    street_counts_default = street_counts_default[street_counts_default.index.notna()]
+    street_counts_default = street_counts_default[street_counts_default >= 10]
+    default_street = street_counts_default.index[0] if len(street_counts_default) > 0 else None
     
-    col1, col2, col3 = st.columns([1, 1, 1])
+    # Historical statistics first (like Overview page)
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Streets", f"{filtered_df['ON STREET NAME'].nunique():,}")
+    col2.metric("Total Crashes", f"{len(filtered_df):,}")
+    col3.metric("Total Injuries", f"{int(filtered_df['TOTAL_INJURED'].sum()):,}")
+    col4.metric("Total Fatalities", f"{int(filtered_df['TOTAL_KILLED'].sum()):,}")
     
-    with col1:
-        # Borough filter first to narrow down streets
-        risk_borough = st.selectbox("Filter by Borough:", ['All'] + sorted([b for b in filtered_df['BOROUGH'].unique() if b != 'Highways']), key="risk_borough")
-    
-    with col2:
-        # Minimum crash threshold filter
-        min_crashes = st.selectbox("Min. Historical Crashes:", [1, 5, 10, 25, 50, 100, 250, 500, 1000], index=2, key="min_crashes",
-                                   help="Filter to streets with at least this many historical crashes for more reliable predictions")
-    
-    # Get all streets, sorted by crash count, filtered by borough if selected
-    if risk_borough != 'All':
-        borough_df = filtered_df[filtered_df['BOROUGH'] == risk_borough]
-    else:
-        borough_df = filtered_df
-    
-    # Get all streets with at least min_crashes, sorted by frequency
-    street_counts = borough_df['ON STREET NAME'].value_counts()
-    street_counts = street_counts[street_counts.index.notna()]
-    street_counts = street_counts[street_counts >= min_crashes]
-    all_streets = street_counts.index.tolist()
-    
-    with col3:
-        if len(all_streets) > 0:
-            selected_street = st.selectbox(f"Select Street ({len(all_streets):,} available):", all_streets, key="risk_street")
+    # Location selection (now below stats, in expander like Overview)
+    with st.expander("Select Location for Risk Analysis", expanded=True):
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            # Borough filter first to narrow down streets
+            risk_borough = st.selectbox("Filter by Borough:", ['All'] + sorted([b for b in filtered_df['BOROUGH'].unique() if b != 'Highways']), key="risk_borough")
+        
+        with col2:
+            # Minimum crash threshold filter
+            min_crashes = st.selectbox("Min. Historical Crashes:", [1, 5, 10, 25, 50, 100, 250, 500, 1000], index=2, key="min_crashes",
+                                       help="Filter to streets with at least this many historical crashes for more reliable predictions")
+        
+        # Get all streets, sorted by crash count, filtered by borough if selected
+        if risk_borough != 'All':
+            borough_df = filtered_df[filtered_df['BOROUGH'] == risk_borough]
         else:
-            st.warning("No streets match criteria.")
-            selected_street = None
+            borough_df = filtered_df
+        
+        # Get all streets with at least min_crashes, sorted by frequency
+        street_counts = borough_df['ON STREET NAME'].value_counts()
+        street_counts = street_counts[street_counts.index.notna()]
+        street_counts = street_counts[street_counts >= min_crashes]
+        all_streets = street_counts.index.tolist()
+        
+        with col3:
+            if len(all_streets) > 0:
+                selected_street = st.selectbox(f"Select Street ({len(all_streets):,} available):", all_streets, key="risk_street")
+            else:
+                st.warning("No streets match criteria.")
+                selected_street = None
+    
+    # About section
+    show_analysis("This page uses Monte Carlo simulation to predict crash risk for specific locations. The simulation runs thousands of iterations based on historical patterns to estimate future crash probabilities with confidence intervals.", "About Risk Prediction")
     
     # Only proceed if a street is selected
     if selected_street is None:
@@ -1739,9 +1757,9 @@ elif page == "Risk Prediction":
     if risk_borough != 'All':
         location_df = location_df[location_df['BOROUGH'] == risk_borough]
     
-    # Historical statistics
+    # Location-specific statistics
     st.markdown("---")
-    st.subheader("Historical Statistics")
+    st.subheader(f"Historical Statistics for {selected_street}")
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Crashes", f"{len(location_df):,}")
