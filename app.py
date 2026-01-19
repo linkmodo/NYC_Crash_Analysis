@@ -546,7 +546,7 @@ year_range = st.sidebar.slider(
     "Select Year Range:",
     min_value=int(min(years)),
     max_value=int(max(years)),
-    value=(int(min(years)), int(max(years)))
+    value=(2013, int(max(years)))  # Default to 2013-2025 (2012 has partial data)
 )
 
 # Borough filter
