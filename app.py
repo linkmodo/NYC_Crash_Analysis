@@ -1752,8 +1752,9 @@ elif page == "Risk Prediction":
     if selected_street is None:
         st.stop()
     
-    # Filter data for selected location
-    location_df = filtered_df[filtered_df['ON STREET NAME'] == selected_street]
+    # Filter data for selected location - use full dataset (df) instead of filtered_df
+    # for comprehensive historical analysis regardless of sidebar year filter
+    location_df = df[df['ON STREET NAME'] == selected_street]
     if risk_borough != 'All':
         location_df = location_df[location_df['BOROUGH'] == risk_borough]
     
