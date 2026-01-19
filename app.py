@@ -16,28 +16,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Check and download Git LFS files if needed (for Streamlit Cloud deployment)
+# Download dataset from GitHub Release if not present (for Streamlit Cloud deployment)
+import urllib.request
+import shutil
+
 csv_file = "NYC_crashes_dataset_STANDARDIZED.csv"
-if os.path.exists(csv_file):
-    file_size = os.path.getsize(csv_file)
-    # LFS pointer files are tiny (<200 bytes), real file is ~522 MB
-    if file_size < 1000:  # If file is less than 1KB, it's just a pointer
-        with st.spinner("Downloading large dataset via Git LFS... This may take a few minutes."):
-            try:
-                result = subprocess.run(["git", "lfs", "pull"], 
-                                      capture_output=True, 
-                                      text=True, 
-                                      check=True)
-                st.success("Dataset downloaded successfully!")
-            except subprocess.CalledProcessError as e:
-                st.error(f"Failed to download LFS files: {e.stderr}")
-                st.stop()
-            except Exception as e:
-                st.error(f"Error: {e}")
-                st.stop()
-else:
-    st.error(f"Dataset file '{csv_file}' not found. Please ensure the repository is properly cloned.")
-    st.stop()
+GITHUB_RELEASE_URL = "https://github.com/linkmodo/NYC_Crash_Analysis/releases/download/v1.0/NYC_crashes_dataset_STANDARDIZED.csv"
+
+if not os.path.exists(csv_file) or os.path.getsize(csv_file) < 1000:
+    st.info("📥 Downloading dataset (522 MB)... This will take a few minutes on first run.")
+    try:
+        with st.spinner("Downloading dataset from GitHub Release..."):
+            with urllib.request.urlopen(GITHUB_RELEASE_URL) as response:
+                with open(csv_file, 'wb') as out_file:
+                    shutil.copyfileobj(response, out_file)
+        st.success("✅ Dataset downloaded successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to download dataset: {e}")
+        st.info("Please ensure the GitHub Release exists at: " + GITHUB_RELEASE_URL)
+        st.stop()
 
 # Custom CSS for light theme styling
 st.markdown("""
