@@ -565,15 +565,24 @@ if page == "Overview":
     
     # Page-specific filters
     with st.expander("Additional Filters", expanded=False):
-        filter_col1, filter_col2, filter_col3 = st.columns(3)
+        filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
         with filter_col1:
+            # Year filter for cross-filtering (moved from below)
+            all_years = sorted(page_df['YEAR'].unique().tolist())
+            selected_years = st.multiselect(
+                "Filter by Year:",
+                all_years,
+                default=all_years,
+                key="overview_year_filter"
+            )
+        with filter_col2:
             severity_filter = st.multiselect(
                 "Severity:",
                 ["Fatal", "Injury", "No Injury"],
                 default=["Fatal", "Injury", "No Injury"],
                 key="overview_severity"
             )
-        with filter_col2:
+        with filter_col3:
             month_filter = st.multiselect(
                 "Months:",
                 list(range(1, 13)),
@@ -581,7 +590,7 @@ if page == "Overview":
                 format_func=lambda x: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][x-1],
                 key="overview_month"
             )
-        with filter_col3:
+        with filter_col4:
             if st.button("Reset Filters", key="overview_reset_filters"):
                 st.rerun()
     
@@ -625,25 +634,19 @@ if page == "Overview":
     
     st.markdown("---")
     
-    # Interactive year selection for cross-filtering
+    # Apply year filter (now in Additional Filters expander)
+    if selected_years and len(selected_years) < len(all_years):
+        cross_filtered_df = page_df[page_df['YEAR'].isin(selected_years)]
+    else:
+        cross_filtered_df = page_df
     
-    yearly_filtered = page_df.groupby('YEAR').agg({
+    # Prepare yearly data for visualization
+    yearly_filtered = cross_filtered_df.groupby('YEAR').agg({
         'COLLISION_ID': 'count',
         'TOTAL_INJURED': 'sum',
         'TOTAL_KILLED': 'sum'
     }).reset_index()
     yearly_filtered.columns = ['Year', 'Crashes', 'Injured', 'Killed']
-    
-    # Year selector for cross-filtering
-    filter_col, _ = st.columns([1, 3])
-    with filter_col:
-        all_years = sorted(yearly_filtered['Year'].unique().tolist())
-        selected_years = st.multiselect("Filter by Year:", all_years, default=all_years, key="overview_year_filter")
-    
-    if selected_years and len(selected_years) < len(all_years):
-        cross_filtered_df = page_df[page_df['YEAR'].isin(selected_years)]
-    else:
-        cross_filtered_df = page_df
     
     col1, col2 = st.columns(2)
     
@@ -1584,12 +1587,13 @@ elif page == "Severity Analysis":
             color='Fatalities',
             color_continuous_scale=RED_SCALE,
             title='Hourly Injury Pattern (size = crashes, color = fatalities)',
-            trendline='ols'
+            trendline='lowess',
+            trendline_options=dict(frac=0.3)
         )
         fig.update_layout(height=500, **get_plot_layout())
         st.plotly_chart(fig, use_container_width=True)
         
-        show_analysis("Each point represents an hour of the day. The trendline shows the linear correlation between hour and injuries. Peak injury hours often align with rush hour traffic.", "Hourly Pattern")
+        show_analysis("Each point represents an hour of the day. The curved trendline shows the non-linear pattern between hour and injuries. Peak injury hours often align with rush hour traffic.", "Hourly Pattern")
     
     with col2:
         # Day of week severity scatter
