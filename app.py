@@ -533,7 +533,7 @@ st.sidebar.markdown("---")
 page = st.sidebar.radio(
     "Navigate to:",
     ["Overview", "Geographic Analysis", "Temporal Analysis", 
-     "Cause Analysis", "Severity Analysis"]
+     "Cause Analysis", "Severity Analysis", "Risk Prediction"]
 )
 
 # Year filter
@@ -804,7 +804,7 @@ elif page == "Geographic Analysis":
     show_analysis("This section visualizes the spatial distribution of crashes across New York City. The maps reveal crash hotspots and help identify high-risk areas that may benefit from targeted safety interventions.", "About Geographic Analysis")
     
     # Get map data
-    map_df = get_map_sample(page_df, sample_size=30000)
+    map_df = get_map_sample(page_df, sample_size=50000)
     
     st.info(f"Displaying {len(map_df):,} crashes with valid coordinates (sampled for performance)")
     
@@ -1690,6 +1690,199 @@ elif page == "Severity Analysis":
             st.plotly_chart(fig, width='stretch')
             
             show_analysis("Multi-fatality crashes are rare but devastating events. They often involve high speeds, impaired driving, or commercial vehicles, and warrant special investigative attention.", "Multi-Fatal Insight")
+
+# ============== PAGE: RISK PREDICTION ==============
+elif page == "Risk Prediction":
+    st.markdown('<h1 class="main-header">Risk Prediction (Monte Carlo Simulation)</h1>', unsafe_allow_html=True)
+    
+    show_analysis("This page uses Monte Carlo simulation to predict crash risk for specific locations. The simulation runs thousands of iterations based on historical patterns to estimate future crash probabilities with confidence intervals.", "About Risk Prediction")
+    
+    # Location selection
+    st.subheader("Select Location for Risk Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Get top streets by crash count
+        top_streets = filtered_df['ON STREET NAME'].value_counts().head(50).index.tolist()
+        selected_street = st.selectbox("Select Street:", top_streets, key="risk_street")
+    
+    with col2:
+        # Borough filter for context
+        risk_borough = st.selectbox("Borough (optional):", ['All'] + sorted([b for b in filtered_df['BOROUGH'].unique() if b != 'Highways']), key="risk_borough")
+    
+    # Filter data for selected location
+    location_df = filtered_df[filtered_df['ON STREET NAME'] == selected_street]
+    if risk_borough != 'All':
+        location_df = location_df[location_df['BOROUGH'] == risk_borough]
+    
+    # Historical statistics
+    st.markdown("---")
+    st.subheader("Historical Statistics")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Crashes", f"{len(location_df):,}")
+    col2.metric("Total Injuries", f"{int(location_df['TOTAL_INJURED'].sum()):,}")
+    col3.metric("Total Fatalities", f"{int(location_df['TOTAL_KILLED'].sum()):,}")
+    
+    # Calculate average crashes per year
+    years_in_data = location_df['YEAR'].nunique()
+    avg_per_year = len(location_df) / max(years_in_data, 1)
+    col4.metric("Avg Crashes/Year", f"{avg_per_year:.1f}")
+    
+    # Monte Carlo Simulation
+    st.markdown("---")
+    st.subheader("Monte Carlo Crash Risk Simulation")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        n_simulations = st.slider("Number of Simulations:", 1000, 10000, 5000, step=1000, key="n_sims")
+    with col2:
+        forecast_months = st.slider("Forecast Period (months):", 1, 24, 12, key="forecast_months")
+    
+    if st.button("Run Monte Carlo Simulation", type="primary", key="run_mc"):
+        with st.spinner("Running simulation..."):
+            # Calculate monthly crash rate from historical data
+            monthly_data = location_df.groupby([location_df['CRASH DATE'].dt.to_period('M')]).size()
+            
+            if len(monthly_data) > 0:
+                mean_monthly = monthly_data.mean()
+                std_monthly = monthly_data.std() if len(monthly_data) > 1 else mean_monthly * 0.3
+                
+                # Run Monte Carlo simulation using Poisson distribution (appropriate for count data)
+                np.random.seed(42)
+                
+                # Simulate monthly crashes for the forecast period
+                simulated_totals = []
+                for _ in range(n_simulations):
+                    # Use Poisson distribution for crash counts
+                    monthly_crashes = np.random.poisson(lam=max(mean_monthly, 0.1), size=forecast_months)
+                    simulated_totals.append(monthly_crashes.sum())
+                
+                simulated_totals = np.array(simulated_totals)
+                
+                # Calculate statistics
+                mean_crashes = np.mean(simulated_totals)
+                std_crashes = np.std(simulated_totals)
+                percentile_5 = np.percentile(simulated_totals, 5)
+                percentile_95 = np.percentile(simulated_totals, 95)
+                percentile_25 = np.percentile(simulated_totals, 25)
+                percentile_75 = np.percentile(simulated_totals, 75)
+                
+                # Display results
+                st.success(f"Simulation complete! ({n_simulations:,} iterations)")
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Expected Crashes", f"{mean_crashes:.1f}", help=f"Mean of {n_simulations:,} simulations")
+                col2.metric("90% Confidence Interval", f"{percentile_5:.0f} - {percentile_95:.0f}")
+                col3.metric("Standard Deviation", f"{std_crashes:.1f}")
+                
+                # Histogram of simulated results
+                st.subheader("Probability Distribution of Predicted Crashes")
+                
+                fig = px.histogram(
+                    x=simulated_totals,
+                    nbins=50,
+                    title=f'Distribution of Predicted Crashes ({forecast_months} months)',
+                    labels={'x': 'Number of Crashes', 'y': 'Frequency'},
+                    color_discrete_sequence=['#3498db']
+                )
+                
+                # Add vertical lines for percentiles
+                fig.add_vline(x=mean_crashes, line_dash="solid", line_color="red", 
+                             annotation_text=f"Mean: {mean_crashes:.1f}")
+                fig.add_vline(x=percentile_5, line_dash="dash", line_color="orange",
+                             annotation_text=f"5th %ile: {percentile_5:.0f}")
+                fig.add_vline(x=percentile_95, line_dash="dash", line_color="orange",
+                             annotation_text=f"95th %ile: {percentile_95:.0f}")
+                
+                fig.update_layout(height=500, **get_plot_layout())
+                st.plotly_chart(fig, width='stretch')
+                
+                show_analysis(f"Based on {n_simulations:,} Monte Carlo simulations, we predict {mean_crashes:.1f} crashes (±{std_crashes:.1f}) on {selected_street} over the next {forecast_months} months. There's a 90% probability the actual count will fall between {percentile_5:.0f} and {percentile_95:.0f} crashes.", "Prediction Summary")
+                
+                # Monthly breakdown simulation
+                st.subheader("Simulated Monthly Crash Distribution")
+                
+                # Run a single representative simulation for visualization
+                np.random.seed(42)
+                sample_monthly = np.random.poisson(lam=max(mean_monthly, 0.1), size=forecast_months)
+                
+                months = pd.date_range(start=pd.Timestamp.now(), periods=forecast_months, freq='M')
+                monthly_sim_df = pd.DataFrame({
+                    'Month': months.strftime('%Y-%m'),
+                    'Predicted Crashes': sample_monthly,
+                    'Lower Bound (25%)': np.random.poisson(lam=max(mean_monthly * 0.7, 0.1), size=forecast_months),
+                    'Upper Bound (75%)': np.random.poisson(lam=max(mean_monthly * 1.3, 0.1), size=forecast_months)
+                })
+                
+                fig = px.bar(
+                    monthly_sim_df,
+                    x='Month',
+                    y='Predicted Crashes',
+                    title='Sample Monthly Crash Prediction',
+                    color_discrete_sequence=['#e74c3c']
+                )
+                fig.update_layout(height=400, **get_plot_layout())
+                st.plotly_chart(fig, width='stretch')
+                
+                # Injury/Fatality risk estimation
+                st.subheader("Casualty Risk Estimation")
+                
+                # Calculate historical injury/fatality rates
+                injury_rate = location_df['TOTAL_INJURED'].sum() / max(len(location_df), 1)
+                fatality_rate = location_df['TOTAL_KILLED'].sum() / max(len(location_df), 1)
+                
+                # Estimate casualties based on predicted crashes
+                predicted_injuries = mean_crashes * injury_rate
+                predicted_fatalities = mean_crashes * fatality_rate
+                
+                col1, col2 = st.columns(2)
+                col1.metric("Predicted Injuries", f"{predicted_injuries:.1f}", 
+                           help=f"Based on historical injury rate of {injury_rate:.2f} per crash")
+                col2.metric("Predicted Fatalities", f"{predicted_fatalities:.2f}",
+                           help=f"Based on historical fatality rate of {fatality_rate:.4f} per crash")
+                
+                show_analysis(f"Based on historical rates, we estimate approximately {predicted_injuries:.1f} injuries and {predicted_fatalities:.2f} fatalities over the {forecast_months}-month forecast period. These estimates assume similar conditions to historical patterns.", "Casualty Forecast")
+            else:
+                st.warning("Insufficient historical data for this location. Please select a different street.")
+    
+    # Historical trend for context
+    st.markdown("---")
+    st.subheader("Historical Crash Trend for Selected Location")
+    
+    if len(location_df) > 0:
+        yearly_location = location_df.groupby('YEAR').size().reset_index(name='Crashes')
+        
+        fig = px.line(yearly_location, x='YEAR', y='Crashes', markers=True,
+                      title=f'Annual Crashes on {selected_street}')
+        fig.update_layout(height=400, **get_plot_layout())
+        st.plotly_chart(fig, width='stretch')
+        
+        # Hourly pattern
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            hourly_location = location_df.groupby('HOUR').size().reset_index(name='Crashes')
+            fig = px.bar(hourly_location, x='HOUR', y='Crashes',
+                         title='Crashes by Hour of Day',
+                         color='Crashes', color_continuous_scale=BLUE_SCALE)
+            fig.update_layout(height=350, **get_plot_layout())
+            st.plotly_chart(fig, width='stretch')
+        
+        with col2:
+            daily_location = location_df.groupby('DAY_NAME').size().reset_index(name='Crashes')
+            day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+            daily_location['DAY_NAME'] = pd.Categorical(daily_location['DAY_NAME'], categories=day_order, ordered=True)
+            daily_location = daily_location.sort_values('DAY_NAME')
+            
+            fig = px.bar(daily_location, x='DAY_NAME', y='Crashes',
+                         title='Crashes by Day of Week',
+                         color='Crashes', color_continuous_scale=BLUE_SCALE)
+            fig.update_layout(height=350, **get_plot_layout())
+            st.plotly_chart(fig, width='stretch')
+    else:
+        st.info("No crash data available for the selected location and filters.")
 
 # Footer
 st.markdown("---")
