@@ -1713,7 +1713,10 @@ elif page == "Risk Prediction":
     col3.metric("Total Injuries", f"{int(filtered_df['TOTAL_INJURED'].sum()):,}")
     col4.metric("Total Fatalities", f"{int(filtered_df['TOTAL_KILLED'].sum()):,}")
     
-    # Location selection (now below stats, in expander like Overview)
+    # About section first
+    show_analysis("This page uses Monte Carlo simulation to predict crash risk for specific locations. The simulation runs thousands of iterations based on historical patterns to estimate future crash probabilities with confidence intervals.", "About Risk Prediction")
+    
+    # Location selection (now below About section)
     with st.expander("Select Location for Risk Analysis", expanded=True):
         col1, col2, col3 = st.columns([1, 1, 1])
         
@@ -1744,9 +1747,6 @@ elif page == "Risk Prediction":
             else:
                 st.warning("No streets match criteria.")
                 selected_street = None
-    
-    # About section
-    show_analysis("This page uses Monte Carlo simulation to predict crash risk for specific locations. The simulation runs thousands of iterations based on historical patterns to estimate future crash probabilities with confidence intervals.", "About Risk Prediction")
     
     # Only proceed if a street is selected
     if selected_street is None:
