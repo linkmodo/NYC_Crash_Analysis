@@ -54,6 +54,14 @@ st.markdown("""
         color: #333333 !important;
     }
     
+    /* Reduce page title padding */
+    .main-header {
+        margin-top: 0 !important;
+        margin-bottom: 0.5rem !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
     /* Metric cards */
     .stMetric {
         background-color: #f8f9fa !important;
@@ -551,23 +559,38 @@ def filter_data(df, year_range, borough):
 
 filtered_df = filter_data(df, year_range, selected_borough)
 
-# Sidebar stats
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Quick Stats")
-st.sidebar.markdown(f"**Total Records:** {len(df):,}")
-st.sidebar.markdown(f"**Filtered:** {len(filtered_df):,}")
-st.sidebar.markdown(f"**Date Range:**")
-st.sidebar.markdown(f"{df['CRASH DATE'].min().strftime('%Y-%m-%d')} to {df['CRASH DATE'].max().strftime('%Y-%m-%d')}")
 
 # ============== PAGE: OVERVIEW ==============
 if page == "Overview":
     st.markdown('<h1 class="main-header">NYC Motor Vehicle Collisions Dashboard</h1>', unsafe_allow_html=True)
-    st.markdown("---")
     
     # Get available years from filtered data
     all_years = sorted(filtered_df['YEAR'].unique().tolist())
     
-    # Page-specific filters
+    # Initialize filter variables with defaults
+    selected_years = all_years
+    severity_filter = ["Fatal", "Injury", "No Injury"]
+    month_filter = list(range(1, 13))
+    
+    # Apply page-specific filters (use defaults initially, will be updated by expander)
+    page_df = filtered_df.copy()
+    
+    # KPI Metrics first
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    total_crashes = len(page_df)
+    total_injured = int(page_df['TOTAL_INJURED'].sum())
+    total_killed = int(page_df['TOTAL_KILLED'].sum())
+    pedestrians_killed = int(page_df['NUMBER OF PEDESTRIANS KILLED'].sum())
+    cyclists_killed = int(page_df['NUMBER OF CYCLIST KILLED'].sum())
+    
+    col1.metric("Total Crashes", f"{total_crashes:,}")
+    col2.metric("Total Injured", f"{total_injured:,}")
+    col3.metric("Total Killed", f"{total_killed:,}")
+    col4.metric("Pedestrians Killed", f"{pedestrians_killed:,}")
+    col5.metric("Cyclists Killed", f"{cyclists_killed:,}")
+    
+    # Page-specific filters (now below stats)
     with st.expander("Additional Filters", expanded=False):
         filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
         with filter_col1:
@@ -597,7 +620,7 @@ if page == "Overview":
             if st.button("Reset Filters", key="overview_reset_filters"):
                 st.rerun()
     
-    # Apply page-specific filters
+    # Re-apply page-specific filters after expander
     page_df = filtered_df.copy()
     if severity_filter:
         severity_conditions = []
@@ -615,25 +638,10 @@ if page == "Overview":
     if month_filter:
         page_df = page_df[page_df['MONTH'].isin(month_filter)]
     
-    # Overview analysis
+    # Overview analysis (now below filters)
     avg_daily = len(page_df) / max((page_df['CRASH DATE'].max() - page_df['CRASH DATE'].min()).days, 1) if len(page_df) > 0 else 0
     fatality_rate = (page_df['TOTAL_KILLED'].sum() / len(page_df)) * 100 if len(page_df) > 0 else 0
     show_analysis(f"This dashboard analyzes {len(page_df):,} motor vehicle collisions in New York City. On average, there are approximately {avg_daily:.0f} crashes per day in the selected period, with a fatality rate of {fatality_rate:.3f}% per crash.", "Dashboard Overview")
-    
-    # KPI Metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    total_crashes = len(page_df)
-    total_injured = int(page_df['TOTAL_INJURED'].sum())
-    total_killed = int(page_df['TOTAL_KILLED'].sum())
-    pedestrians_killed = int(page_df['NUMBER OF PEDESTRIANS KILLED'].sum())
-    cyclists_killed = int(page_df['NUMBER OF CYCLIST KILLED'].sum())
-    
-    col1.metric("Total Crashes", f"{total_crashes:,}")
-    col2.metric("Total Injured", f"{total_injured:,}")
-    col3.metric("Total Killed", f"{total_killed:,}")
-    col4.metric("Pedestrians Killed", f"{pedestrians_killed:,}")
-    col5.metric("Cyclists Killed", f"{cyclists_killed:,}")
     
     st.markdown("---")
     
@@ -655,7 +663,6 @@ if page == "Overview":
     
     with col1:
         st.subheader("Crashes Over Time")
-        st.caption("Click on a year in the chart to filter other visualizations")
         fig = px.line(yearly_filtered, x='Year', y='Crashes', 
                       markers=True, title='Annual Crash Trend')
         if selected_years and len(selected_years) < len(all_years):
@@ -1565,14 +1572,12 @@ elif page == "Severity Analysis":
         x='Total Injured',
         y='Crash Count',
         color='Borough',
-        size='Total Killed',
         hover_data=['Hour', 'Total Killed'],
-        title='Injuries vs Crash Count by Borough (size = fatalities)',
-        trendline='lowess',
-        trendline_options=dict(frac=0.3),
+        title='Injuries vs Crash Count by Borough',
+        trendline='ols',
         opacity=0.7
     )
-    # Make trendlines dotted
+    # Make trendlines dotted linear lines
     for trace in fig.data:
         if trace.mode == 'lines':
             trace.line.dash = 'dot'
@@ -1690,9 +1695,10 @@ elif page == "Severity Analysis":
 st.markdown("---")
 st.markdown(
     """
-    <div style='text-align: center; color: #666;'>
-        <p>NYC Motor Vehicle Collisions Dashboard | Data Source: NYC Open Data</p>
-        <p>Built with Streamlit & Plotly</p>
+    <div style='text-align: center; color: #666; line-height: 1.2;'>
+        <p style='margin: 0.2rem 0;'>NYC Motor Vehicle Collisions Dashboard | Data Source: NYC Open Data</p>
+        <p style='margin: 0.2rem 0;'>Data Preparation and Analysis by Li Fan, January 2026</p>
+        <p style='margin: 0.2rem 0;'>Built with Streamlit & Plotly</p>
     </div>
     """, 
     unsafe_allow_html=True
