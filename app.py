@@ -349,6 +349,10 @@ def show_analysis(text, label="Analysis"):
     with st.expander(f"ℹ️ {label}", expanded=False):
         st.write(text)
 
+def show_page_subtitle(text):
+    """Display page description as centered subtitle under main title."""
+    st.markdown(f'<p style="text-align: center; color: #7f8c8d; font-size: 1.1em; margin-top: -10px; margin-bottom: 20px;">{text}</p>', unsafe_allow_html=True)
+
 def create_sortable_bar_chart(data, x_col, y_col, title, key_prefix, color=None, color_scale=None, orientation='v', height=500):
     """Create a bar chart with sorting options."""
     sort_col1, sort_col2 = st.columns([3, 1])
@@ -563,6 +567,7 @@ filtered_df = filter_data(df, year_range, selected_borough)
 # ============== PAGE: OVERVIEW ==============
 if page == "Overview":
     st.markdown('<h1 class="main-header">NYC Motor Vehicle Collisions Dashboard</h1>', unsafe_allow_html=True)
+    show_page_subtitle("Comprehensive analysis of motor vehicle collisions in New York City. Explore crash trends, patterns, and safety insights across all five boroughs.")
     
     # Get available years from filtered data
     all_years = sorted(filtered_df['YEAR'].unique().tolist())
@@ -766,6 +771,7 @@ if page == "Overview":
 # ============== PAGE: GEOGRAPHIC ANALYSIS ==============
 elif page == "Geographic Analysis":
     st.markdown('<h1 class="main-header">Geographic Analysis</h1>', unsafe_allow_html=True)
+    show_page_subtitle("Visualize the spatial distribution of crashes across NYC. Identify hotspots and high-risk areas for targeted safety interventions.")
     st.markdown("---")
     
     # Page-specific filters
@@ -801,7 +807,6 @@ elif page == "Geographic Analysis":
             page_df = page_df[combined]
     page_df = page_df[(page_df['HOUR'] >= hour_range[0]) & (page_df['HOUR'] <= hour_range[1])]
     
-    show_analysis("This section visualizes the spatial distribution of crashes across New York City. The maps reveal crash hotspots and help identify high-risk areas that may benefit from targeted safety interventions.", "About Geographic Analysis")
     
     # Get map data
     map_df = get_map_sample(page_df, sample_size=50000)
@@ -891,17 +896,27 @@ elif page == "Geographic Analysis":
         # Get crash points for each borough to show distribution
         borough_map_df = map_df[map_df['BOROUGH'] != 'Highways'].copy()
         
-        # Create scatter map colored by borough with orange intensity based on crash density
+        # Merge borough crash counts for gradient intensity
+        borough_map_df = borough_map_df.merge(
+            borough_stats[['Borough', 'Crashes']], 
+            left_on='BOROUGH', 
+            right_on='Borough', 
+            how='left'
+        )
+        
+        # Create scatter map with borough colors and gradient intensity based on crash count
         fig = px.scatter_map(
             borough_map_df, 
             lat='LATITUDE', 
             lon='LONGITUDE',
             color='BOROUGH',
-            hover_data=['BOROUGH'],
+            size='Crashes',
+            hover_data=['BOROUGH', 'Crashes'],
             zoom=10,
             map_style='carto-positron',
-            title='Crash Distribution by Borough',
-            opacity=0.6,
+            title='Crash Distribution by Borough (Size = Total Borough Crashes)',
+            opacity=0.5,
+            size_max=15,
             color_discrete_map={
                 'MANHATTAN': '#d62728',
                 'BROOKLYN': '#ff7f0e',
@@ -982,6 +997,7 @@ elif page == "Geographic Analysis":
 # ============== PAGE: TEMPORAL ANALYSIS ==============
 elif page == "Temporal Analysis":
     st.markdown('<h1 class="main-header">Temporal Analysis</h1>', unsafe_allow_html=True)
+    show_page_subtitle("Understand when crashes occur. Identify high-risk time periods related to rush hours, weekends, and seasonal variations.")
     st.markdown("---")
     
     # Page-specific filters
@@ -1023,7 +1039,6 @@ elif page == "Temporal Analysis":
     if day_filter:
         page_df = page_df[page_df['DAY_NAME'].isin(day_filter)]
     
-    show_analysis("Understanding when crashes occur helps identify high-risk time periods. This analysis reveals patterns related to rush hours, weekends, and seasonal variations that can inform traffic management strategies.", "About Temporal Analysis")
     
     # Cross-filter by hour
     selected_hour = st.selectbox("Filter all charts by Hour:", ["All Hours"] + list(range(24)), key="temp_hour_filter")
@@ -1172,6 +1187,7 @@ elif page == "Temporal Analysis":
 # ============== PAGE: CAUSE ANALYSIS ==============
 elif page == "Cause Analysis":
     st.markdown('<h1 class="main-header">Cause & Vehicle Analysis</h1>', unsafe_allow_html=True)
+    show_page_subtitle("Examine the primary factors contributing to crashes. Identify common causes and vehicle types involved in collisions.")
     st.markdown("---")
     
     # Page-specific filters
@@ -1407,6 +1423,7 @@ elif page == "Cause Analysis":
 # ============== PAGE: SEVERITY ANALYSIS ==============
 elif page == "Severity Analysis":
     st.markdown('<h1 class="main-header">Severity Analysis</h1>', unsafe_allow_html=True)
+    show_page_subtitle("Analyze crash outcomes and severity. Understand the relationship between crash characteristics and injury/fatality rates.")
     st.markdown("---")
     
     # Page-specific filters
@@ -1694,6 +1711,7 @@ elif page == "Severity Analysis":
 # ============== PAGE: RISK PREDICTION ==============
 elif page == "Risk Prediction":
     st.markdown('<h1 class="main-header">Risk Prediction (Monte Carlo Simulation)</h1>', unsafe_allow_html=True)
+    show_page_subtitle("Predict crash risk for specific locations using Monte Carlo simulation. Run thousands of iterations based on historical patterns to estimate future crash probabilities.")
     
     # Initialize filter variables with defaults
     risk_borough = 'All'
@@ -1752,9 +1770,13 @@ elif page == "Risk Prediction":
     if selected_street is None:
         st.stop()
     
-    # Filter data for selected location - use full dataset (df) instead of filtered_df
-    # for comprehensive historical analysis regardless of sidebar year filter
-    location_df = df[df['ON STREET NAME'] == selected_street]
+    # Filter data for selected location - use full dataset for stats, filtered for charts
+    location_df_full = df[df['ON STREET NAME'] == selected_street]
+    if risk_borough != 'All':
+        location_df_full = location_df_full[location_df_full['BOROUGH'] == risk_borough]
+    
+    # For Historical Crash Trend chart, respect sidebar year filter
+    location_df = filtered_df[filtered_df['ON STREET NAME'] == selected_street]
     if risk_borough != 'All':
         location_df = location_df[location_df['BOROUGH'] == risk_borough]
     
@@ -1784,8 +1806,8 @@ elif page == "Risk Prediction":
     
     if st.button("Run Monte Carlo Simulation", type="primary", key="run_mc"):
         with st.spinner("Running simulation..."):
-            # Calculate monthly crash rate from historical data
-            monthly_data = location_df.groupby([location_df['CRASH DATE'].dt.to_period('M')]).size()
+            # Calculate monthly crash rate from full historical data (not filtered by year)
+            monthly_data = location_df_full.groupby([location_df_full['CRASH DATE'].dt.to_period('M')]).size()
             
             if len(monthly_data) > 0:
                 mean_monthly = monthly_data.mean()
@@ -1871,9 +1893,9 @@ elif page == "Risk Prediction":
                 # Injury/Fatality risk estimation
                 st.subheader("Casualty Risk Estimation")
                 
-                # Calculate historical injury/fatality rates
-                injury_rate = location_df['TOTAL_INJURED'].sum() / max(len(location_df), 1)
-                fatality_rate = location_df['TOTAL_KILLED'].sum() / max(len(location_df), 1)
+                # Calculate historical injury/fatality rates from full dataset
+                injury_rate = location_df_full['TOTAL_INJURED'].sum() / max(len(location_df_full), 1)
+                fatality_rate = location_df_full['TOTAL_KILLED'].sum() / max(len(location_df_full), 1)
                 
                 # Estimate casualties based on predicted crashes
                 predicted_injuries = mean_crashes * injury_rate
