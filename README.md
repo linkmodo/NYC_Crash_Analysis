@@ -1,14 +1,15 @@
 ---
-title: Streamlit Template Space
+title: NYC Crash Analytics
 emoji: 🚀
 colorFrom: red
 colorTo: red
 sdk: docker
 app_port: 8501
 tags:
-  - streamlit
+- streamlit
 pinned: false
-short_description: Streamlit template space
+short_description: NYC Crash Analytics 2012-2025
+license: mit
 ---
 
 # Welcome to Streamlit!
