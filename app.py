@@ -16,51 +16,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Dataset configuration
-import urllib.request
-import shutil
-
+# Dataset file path (Hugging Face Spaces handles Git LFS automatically)
 CSV_FILE = "NYC_crashes_dataset_STANDARDIZED.csv"
-GITHUB_RELEASE_URL = "https://github.com/linkmodo/NYC_Crash_Analysis/releases/download/v1.0/NYC_crashes_dataset_STANDARDIZED.csv"
-
-def download_dataset_if_needed():
-    """Download dataset from GitHub Release if not present or invalid."""
-    if not os.path.exists(CSV_FILE) or os.path.getsize(CSV_FILE) < 1000:
-        st.info("📥 Downloading dataset (522 MB)... This will take a few minutes on first run.")
-        try:
-            # Download with progress indication
-            import requests
-            response = requests.get(GITHUB_RELEASE_URL, stream=True)
-            response.raise_for_status()
-            
-            total_size = int(response.headers.get('content-length', 0))
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            with open(CSV_FILE, 'wb') as f:
-                downloaded = 0
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if total_size > 0:
-                            progress = downloaded / total_size
-                            progress_bar.progress(progress)
-                            status_text.text(f"Downloaded: {downloaded / (1024*1024):.1f} MB / {total_size / (1024*1024):.1f} MB")
-            
-            progress_bar.empty()
-            status_text.empty()
-            st.success("✅ Dataset downloaded successfully!")
-            return True
-        except Exception as e:
-            st.error(f"❌ Failed to download dataset: {e}")
-            st.info("Please ensure the GitHub Release exists at: " + GITHUB_RELEASE_URL)
-            return False
-    return True
-
-# Download dataset if needed
-if not download_dataset_if_needed():
-    st.stop()
 
 # Custom CSS for light theme styling
 st.markdown("""
