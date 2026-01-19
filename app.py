@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 from datetime import datetime
+import os
+import subprocess
 
 # Page configuration
 st.set_page_config(
@@ -13,6 +15,29 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Check and download Git LFS files if needed (for Streamlit Cloud deployment)
+csv_file = "NYC_crashes_dataset_STANDARDIZED.csv"
+if os.path.exists(csv_file):
+    file_size = os.path.getsize(csv_file)
+    # LFS pointer files are tiny (<200 bytes), real file is ~522 MB
+    if file_size < 1000:  # If file is less than 1KB, it's just a pointer
+        with st.spinner("Downloading large dataset via Git LFS... This may take a few minutes."):
+            try:
+                result = subprocess.run(["git", "lfs", "pull"], 
+                                      capture_output=True, 
+                                      text=True, 
+                                      check=True)
+                st.success("Dataset downloaded successfully!")
+            except subprocess.CalledProcessError as e:
+                st.error(f"Failed to download LFS files: {e.stderr}")
+                st.stop()
+            except Exception as e:
+                st.error(f"Error: {e}")
+                st.stop()
+else:
+    st.error(f"Dataset file '{csv_file}' not found. Please ensure the repository is properly cloned.")
+    st.stop()
 
 # Custom CSS for light theme styling
 st.markdown("""
