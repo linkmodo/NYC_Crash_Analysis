@@ -28,6 +28,8 @@ wheels/
 
 # Data files (large CSV files)
 *.csv
+# Exception: Include the standardized dataset (tracked with Git LFS)
+!NYC_crashes_dataset_STANDARDIZED.csv
 
 # IDE
 .vscode/
