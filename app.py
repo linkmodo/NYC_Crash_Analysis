@@ -396,18 +396,17 @@ if 'selected_factor' not in st.session_state:
 # Data loading with caching
 @st.cache_data(show_spinner="Loading NYC Crashes data...")
 def load_data():
-    """Load and preprocess the NYC crashes dataset, filtering for valid geospatial data."""
+    """Load and preprocess the NYC crashes dataset with standardized vehicle types."""
     df = pd.read_csv(
-        r"E:\PycharmProjects\data visualizer\NYC_Crashes_dataset_CLEAN.csv",
+        r"E:\PycharmProjects\data visualizer\NYC_crashes_dataset_STANDARDIZED.csv",
         parse_dates=['CRASH DATE'],
         low_memory=False
     )
     
-    # Filter for valid geospatial data only
-    df = df.dropna(subset=['LATITUDE', 'LONGITUDE'])
-    df = df[(df['LATITUDE'] != 0) & (df['LONGITUDE'] != 0)]
-    df = df[(df['LATITUDE'] > 40.4) & (df['LATITUDE'] < 41.0)]
-    df = df[(df['LONGITUDE'] > -74.3) & (df['LONGITUDE'] < -73.6)]
+    # Data is already cleaned and standardized
+    # - Invalid coordinates removed
+    # - Missing values filled
+    # - Vehicle types standardized (Taxi/TAXI/taxi → Taxi, Unknown/UNK/Unkown → Unknown)
     
     # Parse time
     df['CRASH TIME'] = pd.to_datetime(df['CRASH TIME'], format='%H:%M', errors='coerce')
@@ -1217,9 +1216,13 @@ elif page == "Cause Analysis":
         fig.update_layout(height=700, **get_plot_layout())
         st.plotly_chart(fig, use_container_width=True)
         
-        if len(factors) > 0:
-            top_factor = factors.iloc[0]
-            show_analysis(f"{top_factor['Factor']} is the leading contributing factor with {top_factor['Count']:,} incidents. Driver behavior factors dominate the list, suggesting education and enforcement as key intervention strategies.", "Top Factor Insight")
+        # Get the actual top factor from the original data (before sorting for display)
+        top_factor_actual = cross_df['CONTRIBUTING FACTOR VEHICLE 1'].value_counts()
+        top_factor_actual = top_factor_actual[top_factor_actual.index != 'Unspecified']
+        if len(top_factor_actual) > 0:
+            top_factor_name = top_factor_actual.index[0]
+            top_factor_count = top_factor_actual.values[0]
+            show_analysis(f"{top_factor_name} is the leading contributing factor with {top_factor_count:,} incidents. Driver behavior factors dominate the list, suggesting education and enforcement as key intervention strategies.", "Top Factor Insight")
     
     with col2:
         st.subheader("Vehicle Types Involved")

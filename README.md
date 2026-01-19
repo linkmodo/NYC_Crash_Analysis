@@ -1,6 +1,6 @@
 # NYC Motor Vehicle Collisions Dashboard
 
-An interactive data visualization dashboard for analyzing NYC motor vehicle collision data from NYC Open Data.
+An interactive data visualization dashboard for analyzing NYC motor vehicle collision data from NYC Open Data (2012-2025).
 
 ## Features
 
@@ -31,13 +31,9 @@ cd NYC_Crash_Analysis
 pip install streamlit pandas plotly numpy
 ```
 
-3. Download the NYC Crashes dataset and place it in the project directory as `NYC_Crashes_dataset.csv`
+3. The cleaned and standardized dataset is included in the repository:
+   - `NYC_crashes_dataset_STANDARDIZED.csv` (stored with Git LFS)
    - Data source: [NYC Open Data - Motor Vehicle Collisions](https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95)
-
-4. Run the data cleaning script (optional but recommended):
-```bash
-python analyze_and_clean_data.py
-```
 
 ## Usage
 
@@ -52,23 +48,55 @@ The dashboard will open in your default web browser at `http://localhost:8501`
 
 ```
 NYC_Crash_Analysis/
-├── app.py                          # Main Streamlit dashboard application
-├── analyze_and_clean_data.py       # Data cleaning and standardization script
+├── app.py                                  # Main Streamlit dashboard application
+├── standardize_vehicle_types.py            # Vehicle type standardization script
+├── analyze_missing_data.py                 # Missing data analysis script
+├── create_final_clean_dataset.py           # Data cleaning script
+├── remove_2026_data.py                     # Remove incomplete 2026 data
 ├── .streamlit/
-│   └── config.toml                 # Streamlit configuration (light theme)
-├── NYC_Crashes_dataset.csv         # Original dataset (not included in repo)
-├── NYC_Crashes_dataset_CLEAN.csv   # Cleaned dataset (not included in repo)
+│   └── config.toml                         # Streamlit configuration (light theme)
+├── NYC_crashes_dataset_STANDARDIZED.csv    # Final cleaned dataset (Git LFS)
 ├── .gitignore
+├── .gitattributes                          # Git LFS configuration
 └── README.md
 ```
 
-## Data Cleaning
+## Data Processing Pipeline
 
-The `analyze_and_clean_data.py` script performs:
-- Vehicle type standardization (merges duplicates like SEDAN/Sedan, TAXI/Taxi)
-- Contributing factor standardization
-- Borough name cleaning
-- Case normalization
+### 1. Missing Data Analysis (`analyze_missing_data.py`)
+- Analyzes missing data patterns across all columns
+- Identifies rows with invalid coordinates
+- Recommends data removal strategies
+- **Result**: Only 0.35% of data removed (invalid coordinates)
+
+### 2. Data Cleaning (`create_final_clean_dataset.py`)
+- Removes invalid location coordinates (outside NYC boundaries)
+- Fills missing casualty counts with 0
+- Standardizes borough names
+- Fills missing contributing factors with 'Unspecified'
+- Fills missing vehicle types with 'Unknown'
+
+### 3. Vehicle Type Standardization (`standardize_vehicle_types.py`)
+- Merges 367 vehicle type variations into 51 standardized categories
+- Examples:
+  - `Taxi`, `TAXI`, `taxi` → **Taxi**
+  - `Unknown`, `UNK`, `Unkown`, `UNKOWN` → **Unknown**
+  - `Sedan`, `SEDAN`, `4 dr sedan` → **Sedan**
+  - `Livery Vehicle`, `Black Car` → **For-Hire Vehicle**
+- Reduces duplicate categories by 380+ variations
+
+### 4. Incomplete Year Removal (`remove_2026_data.py`)
+- Removes 2,374 records from 2026 (incomplete year)
+- Final dataset: **1,985,248 rows** covering 2012-2025
+
+## Final Dataset Statistics
+
+- **Total Records**: 1,985,248
+- **Date Range**: 2012-2025 (complete years only)
+- **Data Retention**: 99.65% of original data
+- **Missing Data**: Minimal (<1% in critical columns)
+- **Vehicle Categories**: 51 standardized types
+- **Top Vehicle Types**: Sedan (31.74%), SUV (31.00%), Other (22.87%)
 
 ## Features by Page
 
