@@ -397,8 +397,9 @@ if 'selected_factor' not in st.session_state:
 @st.cache_data(show_spinner="Loading NYC Crashes data...")
 def load_data():
     """Load and preprocess the NYC crashes dataset with standardized vehicle types."""
+    # Use relative path for cross-platform compatibility (works locally and on Streamlit Cloud)
     df = pd.read_csv(
-        r"E:\PycharmProjects\data visualizer\NYC_crashes_dataset_STANDARDIZED.csv",
+        "NYC_crashes_dataset_STANDARDIZED.csv",
         parse_dates=['CRASH DATE'],
         low_memory=False
     )
