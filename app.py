@@ -859,7 +859,8 @@ elif page == "Geographic Analysis":
             map_df, lat='LATITUDE', lon='LONGITUDE',
             radius=5, zoom=10,
             mapbox_style='carto-positron',
-            title='Crash Density Heatmap'
+            title='Crash Density Heatmap',
+            color_continuous_scale='Oranges'
         )
         layout = get_plot_layout()
         layout['legend'] = dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01)
@@ -867,47 +868,56 @@ elif page == "Geographic Analysis":
         fig.update_layout(height=700, **layout)
         st.plotly_chart(fig, use_container_width=True, config={'modeBarButtonsToRemove': ['select2d', 'lasso2d']})
         
-        show_analysis("The heatmap intensity shows crash concentration. Brighter areas indicate higher crash density, helping identify dangerous corridors and intersections that may require infrastructure improvements.", "Heatmap Guide")
+        show_analysis("The heatmap intensity shows crash concentration. Darker orange areas indicate higher crash density/severity, helping identify dangerous corridors and intersections that may require infrastructure improvements.", "Heatmap Guide")
     
-    else:  # Cluster Map
-        st.subheader("Crash Hotspots by Borough")
+    else:  # Cluster Map - Borough Highlights
+        st.subheader("Crash Distribution by Borough")
         
         # Borough-level aggregation
-        borough_coords = {
-            'MANHATTAN': (40.7831, -73.9712),
-            'BROOKLYN': (40.6782, -73.9442),
-            'QUEENS': (40.7282, -73.7949),
-            'BRONX': (40.8448, -73.8648),
-            'STATEN ISLAND': (40.5795, -74.1502)
-        }
-        
         borough_stats = filtered_df[filtered_df['BOROUGH'] != 'Highways'].groupby('BOROUGH').agg({
             'COLLISION_ID': 'count',
             'TOTAL_INJURED': 'sum',
             'TOTAL_KILLED': 'sum'
         }).reset_index()
         borough_stats.columns = ['Borough', 'Crashes', 'Injured', 'Killed']
-        borough_stats['lat'] = borough_stats['Borough'].map(lambda x: borough_coords.get(x, (0,0))[0])
-        borough_stats['lon'] = borough_stats['Borough'].map(lambda x: borough_coords.get(x, (0,0))[1])
         
+        # Get crash points for each borough to show distribution
+        borough_map_df = map_df[map_df['BOROUGH'] != 'Highways'].copy()
+        
+        # Create scatter map colored by borough with orange intensity based on crash density
         fig = px.scatter_mapbox(
-            borough_stats, lat='lat', lon='lon',
-            size='Crashes', color='Killed',
-            hover_name='Borough',
-            hover_data=['Crashes', 'Injured', 'Killed'],
-            zoom=9.5,
+            borough_map_df, 
+            lat='LATITUDE', 
+            lon='LONGITUDE',
+            color='BOROUGH',
+            hover_data=['BOROUGH'],
+            zoom=10,
             mapbox_style='carto-positron',
-            title='Borough-Level Crash Summary',
-            size_max=50,
-            color_continuous_scale=BLUE_SCALE
+            title='Crash Distribution by Borough',
+            opacity=0.6,
+            color_discrete_map={
+                'MANHATTAN': '#d62728',
+                'BROOKLYN': '#ff7f0e',
+                'QUEENS': '#2ca02c',
+                'BRONX': '#9467bd',
+                'STATEN ISLAND': '#1f77b4'
+            }
         )
         layout = get_plot_layout()
-        layout['legend'] = dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01)
+        layout['legend'] = dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.01, title="Borough")
         layout['margin'] = dict(t=40, b=0, l=0, r=0)
         fig.update_layout(height=700, **layout)
         st.plotly_chart(fig, use_container_width=True, config={'modeBarButtonsToRemove': ['select2d', 'lasso2d']})
         
-        show_analysis("Bubble size represents total crashes while color intensity indicates fatalities. This aggregated view provides a quick comparison of crash severity across NYC's five boroughs.", "Cluster Guide")
+        # Show borough statistics table
+        st.markdown("**Borough Statistics:**")
+        borough_stats_display = borough_stats.sort_values('Crashes', ascending=False)
+        borough_stats_display['Crashes'] = borough_stats_display['Crashes'].apply(lambda x: f"{x:,}")
+        borough_stats_display['Injured'] = borough_stats_display['Injured'].apply(lambda x: f"{int(x):,}")
+        borough_stats_display['Killed'] = borough_stats_display['Killed'].apply(lambda x: f"{int(x):,}")
+        st.dataframe(borough_stats_display, hide_index=True, use_container_width=True)
+        
+        show_analysis("Each color represents a different borough, showing the geographic distribution of crashes. This view helps identify which areas within each borough have higher crash concentrations.", "Borough Distribution Guide")
     
     # Top dangerous streets
     st.markdown("---")
@@ -1558,9 +1568,14 @@ elif page == "Severity Analysis":
         size='Total Killed',
         hover_data=['Hour', 'Total Killed'],
         title='Injuries vs Crash Count by Borough (size = fatalities)',
-        trendline='ols',
+        trendline='lowess',
+        trendline_options=dict(frac=0.3),
         opacity=0.7
     )
+    # Make trendlines dotted
+    for trace in fig.data:
+        if trace.mode == 'lines':
+            trace.line.dash = 'dot'
     fig.update_layout(height=700, **get_plot_layout())
     fig.update_layout(
         legend=dict(orientation="v", yanchor="top", y=0.95, xanchor="left", x=1.02)
@@ -1593,6 +1608,10 @@ elif page == "Severity Analysis":
             trendline='lowess',
             trendline_options=dict(frac=0.3)
         )
+        # Make trendline dotted
+        for trace in fig.data:
+            if trace.mode == 'lines':
+                trace.line.dash = 'dot'
         fig.update_layout(height=500, **get_plot_layout())
         st.plotly_chart(fig, use_container_width=True)
         
@@ -1616,9 +1635,14 @@ elif page == "Severity Analysis":
             color='Fatalities',
             color_continuous_scale=RED_SCALE,
             title='Daily Injury Pattern (size = crashes, color = fatalities)',
-            trendline='ols',
+            trendline='lowess',
+            trendline_options=dict(frac=0.5),
             labels={'Day_Num': 'Day of Week'}
         )
+        # Make trendline dotted
+        for trace in fig.data:
+            if trace.mode == 'lines':
+                trace.line.dash = 'dot'
         # Update x-axis to show day names instead of numbers
         fig.update_xaxes(
             tickmode='array',
@@ -1628,7 +1652,7 @@ elif page == "Severity Analysis":
         fig.update_layout(height=500, **get_plot_layout())
         st.plotly_chart(fig, use_container_width=True)
         
-        show_analysis("Weekend days often show different patterns than weekdays. The trendline shows the overall weekly pattern. Severity can be higher on weekends due to recreational driving and nightlife activities.", "Daily Pattern")
+        show_analysis("Weekend days often show different patterns than weekdays. The curved trendline shows the overall weekly pattern. Severity can be higher on weekends due to recreational driving and nightlife activities.", "Daily Pattern")
 
     # Multi-fatality crashes
     st.markdown("---")
