@@ -1708,27 +1708,26 @@ elif page == "Risk Prediction":
     
     with col2:
         # Minimum crash threshold filter
-        min_crashes = st.number_input("Min. Historical Crashes:", min_value=1, value=10, step=5, key="min_crashes",
-                                      help="Filter to streets with at least this many historical crashes for more reliable predictions")
+        min_crashes = st.selectbox("Min. Historical Crashes:", [1, 5, 10, 25, 50, 100, 250, 500, 1000], index=2, key="min_crashes",
+                                   help="Filter to streets with at least this many historical crashes for more reliable predictions")
+    
+    # Get all streets, sorted by crash count, filtered by borough if selected
+    if risk_borough != 'All':
+        borough_df = filtered_df[filtered_df['BOROUGH'] == risk_borough]
+    else:
+        borough_df = filtered_df
+    
+    # Get all streets with at least min_crashes, sorted by frequency
+    street_counts = borough_df['ON STREET NAME'].value_counts()
+    street_counts = street_counts[street_counts.index.notna()]
+    street_counts = street_counts[street_counts >= min_crashes]
+    all_streets = street_counts.index.tolist()
     
     with col3:
-        # Get all streets, sorted by crash count, filtered by borough if selected
-        if risk_borough != 'All':
-            borough_df = filtered_df[filtered_df['BOROUGH'] == risk_borough]
-        else:
-            borough_df = filtered_df
-        
-        # Get all streets with at least min_crashes, sorted by frequency
-        street_counts = borough_df['ON STREET NAME'].value_counts()
-        street_counts = street_counts[street_counts.index.notna()]
-        street_counts = street_counts[street_counts >= min_crashes]
-        all_streets = street_counts.index.tolist()
-        
-        st.caption(f"{len(all_streets):,} streets with ≥{min_crashes} crashes")
         if len(all_streets) > 0:
-            selected_street = st.selectbox("Select Street:", all_streets, key="risk_street")
+            selected_street = st.selectbox(f"Select Street ({len(all_streets):,} available):", all_streets, key="risk_street")
         else:
-            st.warning("No streets match the criteria. Lower the minimum crashes threshold.")
+            st.warning("No streets match criteria.")
             selected_street = None
     
     # Only proceed if a street is selected
@@ -1832,7 +1831,7 @@ elif page == "Risk Prediction":
                 np.random.seed(42)
                 sample_monthly = np.random.poisson(lam=max(mean_monthly, 0.1), size=forecast_months)
                 
-                months = pd.date_range(start=pd.Timestamp.now(), periods=forecast_months, freq='M')
+                months = pd.date_range(start=pd.Timestamp.now(), periods=forecast_months, freq='ME')
                 monthly_sim_df = pd.DataFrame({
                     'Month': months.strftime('%Y-%m'),
                     'Predicted Crashes': sample_monthly,
