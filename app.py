@@ -673,7 +673,7 @@ if page == "Overview":
         if selected_years and len(selected_years) < len(all_years):
             for yr in selected_years:
                 fig.add_vline(x=yr, line_dash="dash", line_color="red", opacity=0.5)
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         if len(yearly_filtered) > 1:
@@ -688,7 +688,7 @@ if page == "Overview":
         
         fig = px.pie(borough_filtered, values='Crashes', names='BOROUGH',
                      title='Distribution by Borough', hole=0.4)
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         if len(borough_filtered) > 0:
@@ -702,7 +702,7 @@ if page == "Overview":
     monthly_filtered['Date'] = monthly_filtered['CRASH DATE'].dt.to_timestamp()
     
     fig = px.area(monthly_filtered, x='Date', y='Crashes', title='Monthly Crashes')
-    fig.update_layout(height=700, **get_plot_layout())
+    fig.update_layout(height=400, **get_plot_layout())
     st.plotly_chart(fig, width='stretch')
     
     show_analysis("The monthly trend reveals seasonal patterns in crash frequency. Variations may be influenced by weather conditions, holiday periods, and traffic volume changes throughout the year.", "Seasonal Patterns")
@@ -731,7 +731,7 @@ if page == "Overview":
                      title='Injuries by Road User Type',
                      color='Injured', color_continuous_scale=BLUE_SCALE)
         fig = add_percentage_to_bar(fig, injury_data, 'Injured')
-        fig.update_layout(height=700, showlegend=False, **get_plot_layout())
+        fig.update_layout(height=400, showlegend=False, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         total_injuries = injury_data['Injured'].sum()
@@ -760,7 +760,7 @@ if page == "Overview":
                      title='Fatalities by Road User Type',
                      color='Killed', color_continuous_scale=RED_SCALE)
         fig = add_percentage_to_bar(fig, fatality_data, 'Killed')
-        fig.update_layout(height=700, showlegend=False, **get_plot_layout())
+        fig.update_layout(height=400, showlegend=False, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         total_fatalities = fatality_data['Killed'].sum()
@@ -867,9 +867,12 @@ elif page == "Geographic Analysis":
             show_analysis("The color gradient shows the time of day when crashes occurred. This can reveal patterns related to commute times, nightlife areas, and visibility conditions.", "Time Legend")
     
     elif map_type == "Density Heatmap":
+        # Adjustable radius for density map
+        density_radius = st.slider("Density Radius (dot size):", min_value=1, max_value=20, value=5, key="density_radius")
+        
         fig = px.density_map(
             map_df, lat='LATITUDE', lon='LONGITUDE',
-            radius=5, zoom=10,
+            radius=density_radius, zoom=10,
             map_style='carto-positron',
             title='Crash Density Heatmap',
             color_continuous_scale='Oranges'
@@ -884,6 +887,9 @@ elif page == "Geographic Analysis":
     
     else:  # Cluster Map - Borough Highlights
         st.subheader("Crash Distribution by Borough")
+        
+        # Adjustable dot size for cluster map
+        cluster_size_max = st.slider("Max Dot Size:", min_value=5, max_value=30, value=15, key="cluster_size_max")
         
         # Borough-level aggregation
         borough_stats = filtered_df[filtered_df['BOROUGH'] != 'Highways'].groupby('BOROUGH').agg({
@@ -916,7 +922,7 @@ elif page == "Geographic Analysis":
             map_style='carto-positron',
             title='Crash Distribution by Borough (Size = Total Borough Crashes)',
             opacity=0.5,
-            size_max=15,
+            size_max=cluster_size_max,
             color_discrete_map={
                 'MANHATTAN': '#d62728',
                 'BROOKLYN': '#ff7f0e',
@@ -963,7 +969,7 @@ elif page == "Geographic Analysis":
                      title='Top 15 Streets by Crash Count',
                      color='Crashes', color_continuous_scale=BLUE_SCALE)
         fig = add_percentage_to_bar(fig, top_streets, 'Crashes')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         if len(top_streets) > 0:
@@ -988,7 +994,7 @@ elif page == "Geographic Analysis":
                      title='Top 15 Streets by Fatalities',
                      color='Fatalities', color_continuous_scale=RED_SCALE)
         fig = add_percentage_to_bar(fig, street_fatalities, 'Fatalities')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         if len(street_fatalities) > 0:
@@ -1067,7 +1073,7 @@ elif page == "Temporal Analysis":
         fig = add_percentage_to_bar(fig, hourly, 'Crashes')
         if selected_hour != "All Hours":
             fig.add_vline(x=selected_hour, line_dash="dash", line_color="red")
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         fig.update_xaxes(tickmode='linear', dtick=2)
         st.plotly_chart(fig, width='stretch')
         
@@ -1090,7 +1096,7 @@ elif page == "Temporal Analysis":
                      title='Daily Distribution of Crashes',
                      color='Crashes', color_continuous_scale=BLUE_SCALE)
         fig = add_percentage_to_bar(fig, daily, 'Crashes')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         if len(daily) > 0:
@@ -1112,7 +1118,7 @@ elif page == "Temporal Analysis":
         title='Crash Frequency by Hour and Day',
         labels={'color': 'Crashes'}
     )
-    fig.update_layout(height=700, **get_plot_layout())
+    fig.update_layout(height=400, **get_plot_layout())
     st.plotly_chart(fig, width='stretch')
     
     show_analysis("The heatmap reveals when crashes are most concentrated. Darker colors indicate higher crash frequency. Notice patterns during weekday rush hours versus weekend late-night periods.", "Heatmap Guide")
@@ -1128,7 +1134,7 @@ elif page == "Temporal Analysis":
         monthly['Month_Name'] = monthly['MONTH'].apply(lambda x: month_names[int(x)-1] if pd.notna(x) else 'Unknown')
         fig = px.line(monthly, x='Month_Name', y='Crashes', markers=True,
                       title='Monthly Pattern')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         show_analysis("Monthly patterns often reflect seasonal factors. Winter months may show fewer crashes due to reduced travel, while summer months may see increases from tourism and construction.", "Monthly Patterns")
@@ -1139,7 +1145,7 @@ elif page == "Temporal Analysis":
         fig = px.line(yoy, x='MONTH', y='Crashes', color='YEAR',
                       title='Monthly Crashes by Year',
                       labels={'MONTH': 'Month'})
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         fig.update_xaxes(tickmode='linear', dtick=1)
         st.plotly_chart(fig, width='stretch')
         
@@ -1168,7 +1174,7 @@ elif page == "Temporal Analysis":
     with col1:
         fig = px.pie(period_stats, values='Crashes', names='Period',
                      title='Crashes by Time Period', hole=0.3)
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         if len(period_stats) > 0:
@@ -1179,7 +1185,7 @@ elif page == "Temporal Analysis":
         fig = px.bar(period_stats, x='Period', y=['Injured', 'Killed'],
                      title='Casualties by Time Period', barmode='group')
         fig = add_percentage_to_bar(fig)
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         show_analysis("Night-time crashes often result in more severe outcomes due to reduced visibility, higher speeds, and impaired driving, even though total crash counts may be lower.", "Severity by Time")
@@ -1258,7 +1264,7 @@ elif page == "Cause Analysis":
                      title=f'Top {top_n} Contributing Factors',
                      color='Count', color_continuous_scale=BLUE_SCALE)
         fig = add_percentage_to_bar(fig, factors, 'Count')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         # Get the actual top factor from the original data (before sorting for display)
@@ -1289,7 +1295,7 @@ elif page == "Cause Analysis":
                      title=f'Top {top_n} Vehicle Types',
                      color='Count', color_continuous_scale=BLUE_SCALE)
         fig = add_percentage_to_bar(fig, vehicles, 'Count')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         if len(vehicles) > 0:
@@ -1315,7 +1321,7 @@ elif page == "Cause Analysis":
                  title='Top Contributing Factors in Fatal Crashes',
                  color='Fatal Crashes', color_continuous_scale=RED_SCALE)
     fig = add_percentage_to_bar(fig, fatal_factors, 'Fatal Crashes')
-    fig.update_layout(height=700, **get_plot_layout())
+    fig.update_layout(height=400, **get_plot_layout())
     fig.update_xaxes(tickangle=45)
     # Move colorbar to the right side of the chart
     fig.update_layout(
@@ -1342,7 +1348,7 @@ elif page == "Cause Analysis":
                   color='CONTRIBUTING FACTOR VEHICLE 1',
                   title='Trend of Top Contributing Factors',
                   markers=True)
-    fig.update_layout(height=700, legend_title='Factor', **get_plot_layout())
+    fig.update_layout(height=400, legend_title='Factor', **get_plot_layout())
     st.plotly_chart(fig, width='stretch')
     
     show_analysis("Tracking contributing factors over time reveals the effectiveness of safety campaigns and policy changes. Decreasing trends may indicate successful interventions, while increasing trends highlight emerging concerns.", "Trend Analysis")
@@ -1373,7 +1379,7 @@ elif page == "Cause Analysis":
         color_continuous_scale='Blues',
         title='Relationship Matrix: Vehicle Types & Contributing Factors'
     )
-    fig.update_layout(height=700, **get_plot_layout())
+    fig.update_layout(height=400, **get_plot_layout())
     st.plotly_chart(fig, width='stretch')
     
     show_analysis("This heatmap highlights specific risks associated with different vehicle types. Darker squares indicate frequent associations between a vehicle type and a contributing factor.", "Relationship Insight")
@@ -1395,7 +1401,7 @@ elif page == "Cause Analysis":
                  title=f'Top Contributing Factors for {selected_vehicle_drill}',
                  color='Count', color_continuous_scale=BLUE_SCALE)
     fig = add_percentage_to_bar(fig, vehicle_factors, 'Count')
-    fig.update_layout(height=700, **get_plot_layout())
+    fig.update_layout(height=400, **get_plot_layout())
     st.plotly_chart(fig, width='stretch')
     
     show_analysis(f"Analyzing {selected_vehicle_drill} specifically helps target interventions. Distinct vehicle types often exhibit unique crash causalities based on their size, usage patterns, and blind spots.", "Vehicle Specific Insight")
@@ -1415,7 +1421,7 @@ elif page == "Cause Analysis":
                  title='Vehicle Type Distribution by Borough',
                  barmode='group')
     fig = add_percentage_to_bar(fig)
-    fig.update_layout(height=700, legend_title='Vehicle Type', **get_plot_layout())
+    fig.update_layout(height=400, legend_title='Vehicle Type', **get_plot_layout())
     st.plotly_chart(fig, width='stretch')
     
     show_analysis("Vehicle type distribution varies by borough based on land use patterns. Manhattan sees more taxis and commercial vehicles, while outer boroughs have higher proportions of personal vehicles.", "Borough Patterns")
@@ -1482,7 +1488,7 @@ elif page == "Severity Analysis":
                      color='Severity',
                      color_discrete_map={'Fatal': '#e74c3c', 'Injury Only': '#f39c12', 'No Injury': '#27ae60'},
                      title='Crash Severity Distribution')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         no_injury_pct = (len(no_injury) / len(page_df)) * 100 if len(page_df) > 0 else 0
@@ -1493,7 +1499,7 @@ elif page == "Severity Analysis":
         fatal_yearly = fatal_crashes.groupby('YEAR').size().reset_index(name='Fatal Crashes')
         fig = px.line(fatal_yearly, x='YEAR', y='Fatal Crashes', markers=True,
                       title='Annual Fatal Crashes Trend')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         fig.update_traces(line_color='#e74c3c')
         st.plotly_chart(fig, width='stretch')
         
@@ -1513,7 +1519,7 @@ elif page == "Severity Analysis":
     
     fig = px.line(victim_yearly, x='Year', y=['Pedestrians', 'Cyclists', 'Motorists'],
                   title='Fatalities by Victim Type Over Time', markers=True)
-    fig.update_layout(height=700, legend_title='Victim Type', **get_plot_layout())
+    fig.update_layout(height=400, legend_title='Victim Type', **get_plot_layout())
     st.plotly_chart(fig, width='stretch')
     
     show_analysis("Pedestrians and cyclists are particularly vulnerable road users. Trends in these categories often reflect the success of protected infrastructure investments like bike lanes and pedestrian plazas.", "Vulnerable Users")
@@ -1541,7 +1547,7 @@ elif page == "Severity Analysis":
                      title='Total Fatalities by Borough',
                      color='Fatalities', color_continuous_scale=RED_SCALE)
         fig = add_percentage_to_bar(fig, borough_fatal, 'Fatalities')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         if len(borough_fatal) > 0:
@@ -1562,7 +1568,7 @@ elif page == "Severity Analysis":
                      title='Fatal Crashes by Hour of Day',
                      color='Fatal Crashes', color_continuous_scale=RED_SCALE)
         fig = add_percentage_to_bar(fig, fatal_hourly, 'Fatal Crashes')
-        fig.update_layout(height=700, **get_plot_layout())
+        fig.update_layout(height=400, **get_plot_layout())
         fig.update_xaxes(tickmode='linear', dtick=2)
         st.plotly_chart(fig, width='stretch')
         
@@ -1598,7 +1604,7 @@ elif page == "Severity Analysis":
     for trace in fig.data:
         if trace.mode == 'lines':
             trace.line.dash = 'dot'
-    fig.update_layout(height=700, **get_plot_layout())
+    fig.update_layout(height=400, **get_plot_layout())
     fig.update_layout(
         legend=dict(orientation="v", yanchor="top", y=0.95, xanchor="left", x=1.02)
     )
@@ -1634,7 +1640,7 @@ elif page == "Severity Analysis":
         for trace in fig.data:
             if trace.mode == 'lines':
                 trace.line.dash = 'dot'
-        fig.update_layout(height=500, **get_plot_layout())
+        fig.update_layout(height=350, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         show_analysis("Each point represents an hour of the day. The curved trendline shows the non-linear pattern between hour and injuries. Peak injury hours often align with rush hour traffic.", "Hourly Pattern")
@@ -1671,7 +1677,7 @@ elif page == "Severity Analysis":
             tickvals=[0, 1, 2, 3, 4, 5, 6],
             ticktext=['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         )
-        fig.update_layout(height=500, **get_plot_layout())
+        fig.update_layout(height=350, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         show_analysis("Weekend days often show different patterns than weekdays. The curved trendline shows the overall weekly pattern. Severity can be higher on weekends due to recreational driving and nightlife activities.", "Daily Pattern")
@@ -1702,7 +1708,7 @@ elif page == "Severity Analysis":
                          title='Contributing Factors in Multi-Fatality Crashes',
                          color='Count', color_continuous_scale=RED_SCALE)
             fig = add_percentage_to_bar(fig, multi_fatal_factors, 'Count')
-            fig.update_layout(height=500, margin=dict(b=100), **get_plot_layout())
+            fig.update_layout(height=350, margin=dict(b=100), **get_plot_layout())
             fig.update_xaxes(tickangle=45)
             st.plotly_chart(fig, width='stretch')
             
@@ -1860,7 +1866,7 @@ elif page == "Risk Prediction":
                 fig.add_vline(x=percentile_95, line_dash="dash", line_color="orange",
                              annotation_text=f"95th %ile: {percentile_95:.0f}")
                 
-                fig.update_layout(height=500, **get_plot_layout())
+                fig.update_layout(height=400, **get_plot_layout())
                 st.plotly_chart(fig, width='stretch')
                 
                 show_analysis(f"Based on {n_simulations:,} Monte Carlo simulations, we predict {mean_crashes:.1f} crashes (±{std_crashes:.1f}) on {selected_street} over the next {forecast_months} months. There's a 90% probability the actual count will fall between {percentile_5:.0f} and {percentile_95:.0f} crashes.", "Prediction Summary")
@@ -1887,7 +1893,7 @@ elif page == "Risk Prediction":
                     title='Sample Monthly Crash Prediction',
                     color_discrete_sequence=['#e74c3c']
                 )
-                fig.update_layout(height=400, **get_plot_layout())
+                fig.update_layout(height=350, **get_plot_layout())
                 st.plotly_chart(fig, width='stretch')
                 
                 # Injury/Fatality risk estimation
@@ -1920,7 +1926,7 @@ elif page == "Risk Prediction":
         
         fig = px.line(yearly_location, x='YEAR', y='Crashes', markers=True,
                       title=f'Annual Crashes on {selected_street}')
-        fig.update_layout(height=400, **get_plot_layout())
+        fig.update_layout(height=350, **get_plot_layout())
         st.plotly_chart(fig, width='stretch')
         
         # Hourly pattern
@@ -1931,7 +1937,7 @@ elif page == "Risk Prediction":
             fig = px.bar(hourly_location, x='HOUR', y='Crashes',
                          title='Crashes by Hour of Day',
                          color='Crashes', color_continuous_scale=BLUE_SCALE)
-            fig.update_layout(height=350, **get_plot_layout())
+            fig.update_layout(height=300, **get_plot_layout())
             st.plotly_chart(fig, width='stretch')
         
         with col2:
@@ -1943,7 +1949,7 @@ elif page == "Risk Prediction":
             fig = px.bar(daily_location, x='DAY_NAME', y='Crashes',
                          title='Crashes by Day of Week',
                          color='Crashes', color_continuous_scale=BLUE_SCALE)
-            fig.update_layout(height=350, **get_plot_layout())
+            fig.update_layout(height=300, **get_plot_layout())
             st.plotly_chart(fig, width='stretch')
     else:
         st.info("No crash data available for the selected location and filters.")
